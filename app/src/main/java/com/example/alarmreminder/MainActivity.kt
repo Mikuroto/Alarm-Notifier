@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
 import com.example.alarmreminder.notification.NotificationUtils
 import com.example.alarmreminder.ui.screens.AddReminderScreen
+import com.example.alarmreminder.ui.screens.EditReminderScreen
 import com.example.alarmreminder.ui.screens.ReminderListScreen
 import com.example.alarmreminder.ui.theme.AlarmReminderTheme
 
@@ -28,7 +29,6 @@ class MainActivity : ComponentActivity() {
 
 
         NotificationUtils.createNotificationChannel(this)
-
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permissionCheck = ContextCompat.checkSelfPermission(
@@ -51,16 +51,36 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("add", navOptions {
                                     launchSingleTop = true
                                 })
+                            },
+                            onEditClick = { id ->
+                                navController.navigate("edit/$id", navOptions {
+                                    launchSingleTop = true
+                                })
                             }
                         )
                     }
                     composable("add") {
                         AddReminderScreen(
                             onReminderSaved = {
-
                                 navController.popBackStack()
                             }
                         )
+                    }
+                    composable("edit/{id}") { backStackEntry ->
+                        val id = backStackEntry.arguments?.getString("id")?.toIntOrNull()
+                        if (id != null) {
+                            EditReminderScreen(
+                                reminderId = id,
+                                onReminderUpdated = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        } else {
+                            // if id incoorect
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
                     }
                 }
             }

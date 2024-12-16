@@ -15,4 +15,8 @@ class ReminderRepository(private val dao: ReminderDao) {
     suspend fun getReminderById(id: Int): Reminder? {
         return dao.getReminderById(id)
     }
+
+    suspend fun updateReminder(reminder: Reminder) {
+        dao.update(reminder)
+    }
 }

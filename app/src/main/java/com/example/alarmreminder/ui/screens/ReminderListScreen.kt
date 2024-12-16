@@ -1,5 +1,6 @@
 package com.example.alarmreminder.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,8 +11,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmreminder.data.Reminder
 import com.example.alarmreminder.ui.ReminderListViewModel
-
-
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -20,6 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 @Composable
 fun ReminderListScreen(
     onAddClick: () -> Unit,
+    onEditClick: (Int) -> Unit,
     viewModel: ReminderListViewModel = viewModel()
 ) {
     val reminders by viewModel.reminders.collectAsState()
@@ -59,7 +59,8 @@ fun ReminderListScreen(
                 items(reminders) { reminder ->
                     ReminderItem(
                         reminder = reminder,
-                        onDelete = { viewModel.deleteReminder(reminder) }
+                        onDelete = { viewModel.deleteReminder(reminder) },
+                        onEdit = { onEditClick(reminder.id) }
                     )
                 }
             }
@@ -68,9 +69,11 @@ fun ReminderListScreen(
 }
 
 @Composable
-fun ReminderItem(reminder: Reminder, onDelete: () -> Unit) {
+fun ReminderItem(reminder: Reminder, onDelete: () -> Unit, onEdit: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() },
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(

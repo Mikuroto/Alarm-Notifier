@@ -13,6 +13,7 @@ import com.example.alarmreminder.data.Reminder
 import com.example.alarmreminder.notification.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,16 +92,18 @@ fun AddReminderScreen(
                 onClick = {
                     val eventTime = calendar.timeInMillis
                     coroutineScope.launch(Dispatchers.IO) {
-                        val id = dao.insert(Reminder(eventTime = eventTime, notes = notes))
-                        // Планируем уведомления и будильник
-                        ReminderScheduler.scheduleReminders(context, eventTime, notes)
-                        onReminderSaved()
+                        dao.insert(Reminder(eventTime = eventTime, notes = notes))
+                        // calling in main thread
+                        withContext(Dispatchers.Main) {
+                            onReminderSaved()
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save Reminder")
             }
+
         }
     }
 }
