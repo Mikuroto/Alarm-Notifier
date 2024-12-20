@@ -9,11 +9,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.alarmreminder.data.Reminder
 import com.example.alarmreminder.notification.ReminderScheduler
 import com.example.alarmreminder.ui.EditReminderViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,30 +24,25 @@ fun EditReminderScreen(
     viewModel: EditReminderViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val notes by viewModel.notes.collectAsState()
-    val eventTime by viewModel.eventTime.collectAsState()
-
     val coroutineScope = rememberCoroutineScope()
-    val calendar = remember { Calendar.getInstance() }
 
+    // loading notification
     LaunchedEffect(reminderId) {
         viewModel.loadReminder(reminderId)
     }
 
-    LaunchedEffect(eventTime) {
-        if (eventTime != null) {
-            calendar.timeInMillis = eventTime!!
-        }
-    }
-
+    val eventTime = viewModel.getEventTime()
     var chosenDate by remember { mutableStateOf("") }
     var chosenTime by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf(viewModel.getNotes()) }
+
+    val calendar = remember { Calendar.getInstance() }
 
     LaunchedEffect(eventTime) {
         if (eventTime != null) {
-            val c = Calendar.getInstance().apply { timeInMillis = eventTime!! }
-            chosenDate = "${c.get(Calendar.DAY_OF_MONTH)}/${c.get(Calendar.MONTH)+1}/${c.get(Calendar.YEAR)}"
-            chosenTime = "${c.get(Calendar.HOUR_OF_DAY).toString().padStart(2,'0')}:${c.get(Calendar.MINUTE).toString().padStart(2,'0')}"
+            calendar.timeInMillis = eventTime
+            chosenDate = "${calendar.get(Calendar.DAY_OF_MONTH)}/${calendar.get(Calendar.MONTH)+1}/${calendar.get(Calendar.YEAR)}"
+            chosenTime = "${calendar.get(Calendar.HOUR_OF_DAY).toString().padStart(2,'0')}:${calendar.get(Calendar.MINUTE).toString().padStart(2,'0')}"
         }
     }
 
@@ -57,8 +52,8 @@ fun EditReminderScreen(
             calendar.set(Calendar.YEAR, year)
             calendar.set(Calendar.MONTH, monthOfYear)
             calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-            chosenDate = "$dayOfMonth/${monthOfYear+1}/$year"
             viewModel.updateEventTime(calendar.timeInMillis)
+            chosenDate = "$dayOfMonth/${monthOfYear+1}/$year"
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
@@ -71,8 +66,8 @@ fun EditReminderScreen(
             calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
             calendar.set(Calendar.MINUTE, minute)
             calendar.set(Calendar.SECOND, 0)
-            chosenTime = "${hourOfDay.toString().padStart(2,'0')}:${minute.toString().padStart(2,'0')}"
             viewModel.updateEventTime(calendar.timeInMillis)
+            chosenTime = "${hourOfDay.toString().padStart(2,'0')}:${minute.toString().padStart(2,'0')}"
         },
         calendar.get(Calendar.HOUR_OF_DAY),
         calendar.get(Calendar.MINUTE),
@@ -87,7 +82,7 @@ fun EditReminderScreen(
         }
     ) { innerPadding ->
         if (eventTime == null) {
-            // Пока eventTime не загрузилось, покажем прогресс
+            // while eventTime is not loaded
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -114,21 +109,29 @@ fun EditReminderScreen(
 
                 OutlinedTextField(
                     value = notes,
-                    onValueChange = { viewModel.updateNotes(it) },
+                    onValueChange = {
+                        notes = it
+                        viewModel.updateNotes(it)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Notes") }
                 )
 
                 Button(
                     onClick = {
-                        val et = eventTime
-                        if (et != null) {
-                            coroutineScope.launch {
+                        coroutineScope.launch {
+                            viewModel.saveChanges {
+                                // saved succesfully planning new notifications and alarm
+                                val updatedTime = viewModel.getEventTime()
+                                val updatedId = viewModel.currentReminderId
+                                val updatedNotes = viewModel.getNotes()
 
-                                viewModel.saveChanges {
-                                    // onSaved called in Main thread in EditReminderViewModel
-                                    onReminderUpdated()
+                                if (updatedId != null && updatedTime != null) {
+                                    // planning new notifications
+                                    ReminderScheduler.scheduleReminders(context, updatedId, updatedTime, updatedNotes)
                                 }
+
+                                onReminderUpdated()
                             }
                         }
                     },
@@ -136,9 +139,6 @@ fun EditReminderScreen(
                 ) {
                     Text("Save Changes")
                 }
-
-
-
             }
         }
     }

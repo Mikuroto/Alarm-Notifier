@@ -1,9 +1,12 @@
 package com.example.alarmreminder
 
 import android.Manifest
+import android.app.AlarmManager
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +19,7 @@ import com.example.alarmreminder.notification.NotificationUtils
 import com.example.alarmreminder.ui.screens.AddReminderScreen
 import com.example.alarmreminder.ui.screens.EditReminderScreen
 import com.example.alarmreminder.ui.screens.ReminderListScreen
+import com.example.alarmreminder.ui.screens.SettingsScreen
 import com.example.alarmreminder.ui.theme.AlarmReminderTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,9 +31,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // check and request permission for exact alarm for Android 12+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                startActivity(intent)
+            }
+        }
 
+        // creating notifications channel
         NotificationUtils.createNotificationChannel(this)
 
+        // requesting permission for notifications for Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permissionCheck = ContextCompat.checkSelfPermission(
                 this,
@@ -56,6 +70,11 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("edit/$id", navOptions {
                                     launchSingleTop = true
                                 })
+                            },
+                            onSettingsClick = {
+                                navController.navigate("settings", navOptions {
+                                    launchSingleTop = true
+                                })
                             }
                         )
                     }
@@ -76,11 +95,17 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         } else {
-                            // if id incoorect
                             LaunchedEffect(Unit) {
                                 navController.popBackStack()
                             }
                         }
+                    }
+                    composable("settings") {
+                        SettingsScreen(
+                            onBack = {
+                                navController.popBackStack()
+                            }
+                        )
                     }
                 }
             }

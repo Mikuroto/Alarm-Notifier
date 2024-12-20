@@ -14,12 +14,14 @@ import com.example.alarmreminder.ui.ReminderListViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Settings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderListScreen(
     onAddClick: () -> Unit,
     onEditClick: (Int) -> Unit,
+    onSettingsClick: () -> Unit,
     viewModel: ReminderListViewModel = viewModel()
 ) {
     val reminders by viewModel.reminders.collectAsState()
@@ -33,6 +35,12 @@ fun ReminderListScreen(
                         Icon(
                             imageVector = Icons.Filled.Add,
                             contentDescription = "Add"
+                        )
+                    }
+                    IconButton(onClick = { onSettingsClick() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings"
                         )
                     }
                 }

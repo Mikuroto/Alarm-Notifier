@@ -6,58 +6,60 @@ import androidx.lifecycle.viewModelScope
 import com.example.alarmreminder.data.DatabaseModule
 import com.example.alarmreminder.data.Reminder
 import com.example.alarmreminder.data.ReminderRepository
+import com.example.alarmreminder.notification.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.*
 
 class EditReminderViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = DatabaseModule.getDatabase(application).reminderDao()
     private val repository = ReminderRepository(dao)
 
-    private val _notes = MutableStateFlow("")
-    val notes = _notes.asStateFlow()
-
-    private val _eventTime = MutableStateFlow<Long?>(null)
-    val eventTime = _eventTime.asStateFlow()
-
-    private var currentReminderId: Int? = null
+    private var _notes: String = ""
+    private var _eventTime: Long? = null
+    var currentReminderId: Int? = null
+        private set
 
     fun loadReminder(id: Int) {
+        // starting coroutine, to use suspend function getReminderById
         viewModelScope.launch(Dispatchers.IO) {
             val reminder = repository.getReminderById(id)
             if (reminder != null) {
-                _notes.value = reminder.notes
-                _eventTime.value = reminder.eventTime
+                _notes = reminder.notes
+                _eventTime = reminder.eventTime
                 currentReminderId = reminder.id
             }
         }
     }
 
     fun updateNotes(newNotes: String) {
-        _notes.value = newNotes
+        _notes = newNotes
     }
 
     fun updateEventTime(timeMillis: Long) {
-        _eventTime.value = timeMillis
+        _eventTime = timeMillis
     }
+
+    fun getNotes() = _notes
+    fun getEventTime() = _eventTime
 
     suspend fun saveChanges(onSaved: () -> Unit) {
         val id = currentReminderId
-        val time = eventTime.value
-        val n = notes.value
+        val time = _eventTime
+        val n = _notes
         if (id != null && time != null) {
+            // in the beginning cancelling old notifications
             withContext(Dispatchers.IO) {
+                ReminderScheduler.cancelReminders(getApplication(), id)
                 repository.updateReminder(Reminder(id = id, eventTime = time, notes = n))
             }
-            // returning from IO to main thread before onSaved()
+            withContext(Dispatchers.Main) {
+                onSaved()
+            }
+        } else {
             withContext(Dispatchers.Main) {
                 onSaved()
             }
         }
     }
-
-
 }
